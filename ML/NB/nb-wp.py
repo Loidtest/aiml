@@ -1,56 +1,57 @@
-def read_csv(file_path):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-        header = lines[0].strip().split(',')
-        data = [line.strip().split(',') for line in lines[1:]]
-        return header, data
+import numpy as np
+import pandas as pd
 
-header, data = read_csv('./Glass_Dataset.csv')
-for row in data[:2]:
-    print(row)
+def calculate_prob(x,mean,variance):
+    exponent = np.exp(-((x-mean)**2/(2*variance)))
+    return (1/(np.sqrt(2*np.pi)*variance))*exponent
 
-X = [[float(row[header.index(col)]) for col in header if col != 'Type'] for row in data]
-y = [int(row[header.index('Type')]) for row in data]
+data = pd.read_csv("iris.csv",index_col=0,na_values=['??','???','###'])
+print(np.unique(data['SepalLengthCm']))
+print(np.unique(data['SepalWidthCm']))
+print(np.unique(data['PetalLengthCm']))
+print(np.unique(data['PetalWidthCm']))
+print(np.unique(data['Species'])) 
 
-def train_test_split(X, y, test_size=0.3):
-    test_len = int(len(X) * test_size)
-    indices = list(range(len(X)))
-    random.shuffle(indices)
-    X_train = [X[i] for i in indices[test_len:]]
-    X_test = [X[i] for i in indices[:test_len]]
-    y_train = [y[i] for i in indices[test_len:]]
-    y_test = [y[i] for i in indices[:test_len]]
-    return X_train, X_test, y_train, y_test
+data['Species'].replace('Iris-setosa',1,inplace=True)
+data['Species'].replace('Iris-versicolor',2,inplace=True)
+data['Species'].replace('Iris-virginica',3,inplace=True)
+data['Species']=data['Species'].astype('int64')
 
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3)
+data['SepalLengthCm'].fillna(data['SepalLengthCm'].mean(),inplace=True)
+data['SepalWidthCm'].fillna(data['SepalWidthCm'].mean(),inplace=True)
+data['PetalLengthCm'].fillna(data['PetalLengthCm'].mean(),inplace=True)
 
-class GaussianNB:
-    def __init__(self):
-        self.priors = None
-        self.means = None
-        self.stds = None
+class_label = np.array(['Iris-setosa' 'Iris-versicolor' 'Iris-virginica'])
+features = np.array(['SepalLengthCm','SepalWidthCm','PetalLengthCm','PetalWidthCm'])
 
-    def fit(self, X_train, y_train):
-        labels = sorted(set(y_train))
-        self.priors = [sum(1 for y in y_train if y == label) / len(y_train) for label in labels]
-        self.means = [[sum(x[j] for x,y in zip(X_train,y_train) if y == label) / sum(1 for y in y_train if y == label) for j in range(len(X_train[0]))] for label in labels]
-        self.stds = [[(sum((x[j] - self.means[i][j]) ** 2 for x,y in zip(X_train,y_train) if y == label) / sum(1 for y in y_train if y == label)) ** 0.5 for j in range(len(X_train[0]))] for i,label in enumerate(labels)]
+AM = np.zeros((len(features),len(class_label)))
+AV = np.zeros((len(features),len(class_label)))
 
-    def predict(self, X_test):
-        def normal_pdf(x, mean, std):
-            return (1 / (std * (2 * math.pi) ** 0.5)) * math.exp(-0.5 * ((x - mean) / std) ** 2)
+for i in range(len(class_label)):
+    clas = pd.DataFrame(data[data['Species'].isin([i+1])])
+    for j in range(len(features)):
+        AM[j][i] = np.mean(clas[features[j]])
+        AV[j][i] = np.var(clas[features[j]])
 
-        def posterior(x, label_index):
-            return self.priors[label_index] * product(normal_pdf(x[j], self.means[label_index][j], self.stds[label_index][j]) for j in range(len(x)))
+print("Enter inputs:")
+SL = float(input("Enter the SepalLength: "))
+SW = float(input("Enter the SepalWidth: "))
+PL = float(input("Enter the PetalLength: "))
+PW = float(input("Enter the PetalWidth: "))
+x = [SL,SW,PL,PW]
+A = np.zeros((len(features),len(class_label)))
 
-        return [max(range(len(self.priors)), key=lambda i: posterior(x,i)) + 1 for x in X_test]
+for i in range(len(features)):
+    A[i] = calculate_prob(x[i],AM[i],AV[i])
+print(A)
 
-nb = GaussianNB()
-nb.fit(X_train,y_train)
-
-prediction = nb.predict(X_test)
-
-def accuracy_score(y_true, y_pred):
-    return sum(1 for t,p in zip(y_true,y_pred) if t == p) / len(y_true)
-
-print(accuracy_score(y_test,prediction))
+large = 0.0
+pc = np.array([0.33,0.33,0.33])
+for i in range(len(class_label)):
+    for j in range(len(features)):
+        pc[i] = pc[i]*A[j][i]
+        if large < pc[i]:
+            large = pc[i]
+            k = i
+        print(pc)
+print(class_label[k])
