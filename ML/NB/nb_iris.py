@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split as tts
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score
-data = pd.read_csv('Iris.csv', index_col = 'Id')
+data = pd.read_csv('iris.csv', index_col = 'Id')
 data.head()
 features = ['SepalLengthCm', 'SepalWidthCm', 'PetalLengthCm', 'PetalWidthCm']
 X = data[features]
